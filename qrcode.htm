@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>專業離線 QR Code 產生器與樣式自訂</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QRCode.js (完全離線相容) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" crossorigin="anonymous"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between antialiased selection:bg-indigo-500 selection:text-white">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-qrcode text-lg sm:text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg text-slate-900 leading-tight">ProQRCode 產生器</h1>
+                    <p class="text-xs text-slate-500 hidden sm:block">自訂邊框 · Wi-Fi/名片 · 智慧保護定位角 · 最高 2000px 匯出</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                    完全離線可用
+                </span>
+                <button type="button" id="btn-save-html" title="將此工具儲存為單一 HTML 離線檔案至本機" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 shadow-xs transition-all active:scale-95 cursor-pointer">
+                    <i class="fa-solid fa-file-arrow-down text-indigo-600"></i>
+                    <span class="hidden sm:inline">儲存本機檔案</span>
+                    <span class="sm:hidden">存檔</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-grow">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+            
+            <!-- 左側：設定與輸入區 (7欄) -->
+            <div class="lg:col-span-7 space-y-5">
+                
+                <!-- 1. 內容類型選擇分頁 (網址/文字、Wi-Fi、vCard名片) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-indigo-600"></i>
+                            1. 選擇內容類型與資料輸入
+                        </h2>
+                    </div>
+
+                    <!-- 模式切換按鈕組 -->
+                    <div class="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl">
+                        <button type="button" onclick="setContentType('text')" id="tab-btn-text" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm">
+                            <i class="fa-solid fa-link text-xs"></i> 網址 / 文字
+                        </button>
+                        <button type="button" onclick="setContentType('wifi')" id="tab-btn-wifi" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900">
+                            <i class="fa-solid fa-wifi text-xs"></i> Wi-Fi 連線
+                        </button>
+                        <button type="button" onclick="setContentType('vcard')" id="tab-btn-vcard" class="py-2 px-3 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900">
+                            <i class="fa-solid fa-address-card text-xs"></i> 聯絡人卡片
+                        </button>
+                    </div>
+
+                    <!-- [分頁 1] 網址 / 一般文字 -->
+                    <div id="tab-content-text" class="space-y-3">
+                        <textarea id="input-text" rows="3" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm outline-none resize-none" placeholder="https://example.com 或任意文字...">https://github.com</textarea>
+                    </div>
+
+                    <!-- [分頁 2] Wi-Fi 快速連線 -->
+                    <div id="tab-content-wifi" class="space-y-3 hidden">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="sm:col-span-2">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">網路名稱 (SSID) *</label>
+                                <input type="text" id="wifi-ssid" placeholder="例如：Home_WiFi" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Wi-Fi 密碼</label>
+                                <input type="text" id="wifi-password" placeholder="若無密碼可留空" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">加密類型</label>
+                                <select id="wifi-type" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white">
+                                    <option value="WPA">WPA / WPA2 / WPA3 (最常見)</option>
+                                    <option value="WEP">WEP</option>
+                                    <option value="nopass">無密碼 (開放網路)</option>
+                                </select>
+                            </div>
+                            <div class="sm:col-span-2 flex items-center gap-2 pt-1">
+                                <input type="checkbox" id="wifi-hidden" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                <label for="wifi-hidden" class="text-xs text-slate-600 cursor-pointer">這是隱藏 SSID 的網路</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [分頁 3] vCard 數位名片 -->
+                    <div id="tab-content-vcard" class="space-y-3 hidden">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">姓名 *</label>
+                                <input type="text" id="vcard-fn" placeholder="陳小明" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">電話號碼</label>
+                                <input type="tel" id="vcard-tel" placeholder="+852 91234567" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">電子郵件</label>
+                                <input type="email" id="vcard-email" placeholder="user@example.com" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">公司 / 組織</label>
+                                <input type="text" id="vcard-org" placeholder="某某創新科技" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">職稱</label>
+                                <input type="text" id="vcard-title" placeholder="技術長 / 經理" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">官方網址</label>
+                                <input type="url" id="vcard-url" placeholder="https://example.com" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 點陣風格選擇 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-shapes text-indigo-600"></i>
+                        2. 選擇 QR 碼點陣風格
+                    </h2>
+                    <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
+                        <button type="button" onclick="setDotStyle('square')" id="style-square" class="p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-solid fa-square text-base sm:text-lg"></i> 經典方塊
+                        </button>
+                        <button type="button" onclick="setDotStyle('dots')" id="style-dots" class="p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-solid fa-circle text-base sm:text-lg"></i> 圓點點陣
+                        </button>
+                        <button type="button" onclick="setDotStyle('rounded')" id="style-rounded" class="p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-solid fa-square-full text-base sm:text-lg rounded-sm"></i> 圓角方塊
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2.5 新增：三個定位角樣式選擇 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-crosshairs text-indigo-600"></i>
+                        2.1 選擇定位角樣式 (Finder Patterns)
+                    </h2>
+                    <div class="grid grid-cols-3 gap-2.5 sm:gap-3">
+                        <button type="button" onclick="setFinderStyle('square')" id="finder-square" class="p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-regular fa-square text-base sm:text-lg"></i> 經典方形
+                        </button>
+                        <button type="button" onclick="setFinderStyle('rounded')" id="finder-rounded" class="p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-regular fa-square-full text-base sm:text-lg rounded-md"></i> 圓角方塊
+                        </button>
+                        <button type="button" onclick="setFinderStyle('circle')" id="finder-circle" class="p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all">
+                            <i class="fa-regular fa-circle-dot text-base sm:text-lg"></i> 圓形外框
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. 自訂邊框 (Border / Quiet Zone) -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-regular fa-square text-indigo-600"></i>
+                            3. 外圍邊框大小與色彩 (Quiet Zone Border)
+                        </h2>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center text-xs font-medium text-slate-600">
+                            <span>邊框留白厚度</span>
+                            <span id="border-size-label" class="font-bold text-indigo-600">4 格 (標準安全邊距)</span>
+                        </div>
+                        <input type="range" id="border-size-range" min="0" max="12" step="1" value="4" class="w-full accent-indigo-600 cursor-pointer">
+                        <div class="flex items-center justify-between text-[11px] text-slate-400">
+                            <span>無邊框 (0格)</span>
+                            <span>標準推薦 (4格)</span>
+                            <span>寬厚邊框 (12格)</span>
+                        </div>
+
+                        <!-- 邊框顏色選項 (可選擇跟隨背景或自訂顏色) -->
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                            <label class="text-xs font-medium text-slate-700 flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="border-custom-color" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                                自訂外框專用色彩 (不勾選則同背景色)
+                            </label>
+                            <div id="border-color-picker-wrap" class="hidden flex items-center gap-2">
+                                <input type="color" id="color-border" value="#f1f5f9" class="w-8 h-8 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white">
+                                <input type="text" id="color-border-text" value="#f1f5f9" class="w-20 px-2 py-1 rounded-lg border border-slate-300 text-xs font-mono uppercase outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. 中央挖空與 Logo 嵌入 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-notch text-indigo-600"></i>
+                            4. 中央挖空與 Logo 嵌入
+                        </h2>
+                        <button type="button" id="remove-logo" class="text-xs text-rose-500 hover:text-rose-700 hidden font-medium transition-colors">清除圖片</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
+                        <button type="button" id="mode-none-btn" onclick="setCenterMode('none')" class="py-2.5 px-3 rounded-xl border border-indigo-600 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-ban"></i> 無挖空 (完整)
+                        </button>
+                        <button type="button" id="mode-logo-btn" onclick="setCenterMode('logo')" class="py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 hover:bg-slate-50">
+                            <i class="fa-solid fa-image"></i> 嵌入中央圖片
+                        </button>
+                    </div>
+
+                    <!-- 上傳圖片面板 -->
+                    <div id="panel-logo-upload" class="space-y-3 pt-2 hidden">
+                        <div class="flex items-center gap-4">
+                            <label class="flex-grow cursor-pointer border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-4 flex flex-col items-center justify-center text-center transition-all bg-slate-50">
+                                <i class="fa-solid fa-cloud-arrow-up text-xl text-slate-400 mb-1"></i>
+                                <span class="text-xs font-medium text-slate-700" id="logo-file-label">點擊上傳 PNG / JPG 圖片</span>
+                                <input type="file" id="logo-input" accept="image/png, image/jpeg, image/webp" class="hidden">
+                            </label>
+                            <div id="logo-preview-container" class="w-16 h-16 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center overflow-hidden hidden flex-shrink-0">
+                                <img id="logo-preview-img" class="w-full h-full object-cover" alt="預覽">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 大小調整滑桿 (依內容自動計算上限，最大 35%) -->
+                    <div id="logo-size-wrapper" class="space-y-2 pt-2 border-t border-slate-100 hidden">
+                        <div class="flex justify-between items-center text-xs font-medium text-slate-600">
+                            <span id="max-limit-hint">中央遮蓋比例 (智慧安全上限: 35%)</span>
+                            <span id="logo-size-label" class="font-bold text-indigo-600">20%</span>
+                        </div>
+                        <input type="range" id="logo-size-range" min="15" max="35" step="1" value="20" class="w-full accent-indigo-600 cursor-pointer">
+                        <p class="text-[11px] text-slate-400">💡 平台會自動根據資料量與容錯率計算安全上限（不超過 35%），保護定位角確保掃描順暢。</p>
+                    </div>
+                </div>
+
+                <!-- 5. 顏色自訂 -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6 space-y-4">
+                    <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-palette text-indigo-600"></i>
+                        5. 顏色自訂
+                    </h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">條碼顏色 (前景)</label>
+                            <div class="flex items-center gap-2.5">
+                                <input type="color" id="color-dark" value="#0f172a" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white">
+                                <input type="text" id="color-dark-text" value="#0f172a" class="w-full max-w-[110px] px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono uppercase outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">底圖顏色 (背景)</label>
+                            <div class="flex items-center gap-2.5">
+                                <input type="color" id="color-light" value="#ffffff" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white">
+                                <input type="text" id="color-light-text" value="#ffffff" class="w-full max-w-[110px] px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono uppercase outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 新增：定位角專屬色彩自訂 -->
+                    <div class="pt-3 border-t border-slate-100 space-y-2">
+                        <label class="text-xs font-medium text-slate-700 flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="finder-custom-color" class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                            自訂定位角專用色彩 (不勾選則同條碼顏色)
+                        </label>
+                        <div id="finder-color-picker-wrap" class="hidden flex items-center gap-2.5 pt-1">
+                            <input type="color" id="color-finder" value="#4f46e5" class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-white">
+                            <input type="text" id="color-finder-text" value="#4f46e5" class="w-28 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs sm:text-sm font-mono uppercase outline-none">
+                            <span class="text-xs text-slate-400">專屬 3 個定位角色彩</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- 右側：即時預覽與匯出區 (5欄) -->
+            <div class="lg:col-span-5">
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 sticky top-20 flex flex-col items-center space-y-5">
+                    <div class="w-full flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h2 class="text-sm sm:text-base font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-eye text-indigo-600"></i>
+                            即時預覽與匯出
+                        </h2>
+                        <span id="live-status-pill" class="text-[11px] px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-md font-mono">H 級容錯</span>
+                    </div>
+
+                    <!-- 畫布外框 -->
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center relative shadow-inner w-full aspect-square max-w-[320px]">
+                        <!-- 隱藏的原始 QRCode 容器 -->
+                        <div id="qrcode-container" class="hidden"></div>
+                        <!-- 最終呈現畫布 -->
+                        <canvas id="qrCanvas" class="w-full h-full object-contain rounded-lg shadow-sm transition-transform" width="600" height="600"></canvas>
+                    </div>
+
+                    <!-- 解析度設定 (最高 2000px) -->
+                    <div class="w-full space-y-2">
+                        <div class="flex justify-between items-center text-xs font-medium text-slate-600">
+                            <span>輸出解析度 (最高 2000 x 2000)</span>
+                            <span id="size-label" class="font-bold text-indigo-600">600 x 600 px</span>
+                        </div>
+                        <input type="range" id="size-range" min="200" max="2000" step="50" value="600" class="w-full accent-indigo-600 cursor-pointer">
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>200px (網頁小圖)</span>
+                            <span>1000px</span>
+                            <span>2000px (印刷級)</span>
+                        </div>
+                    </div>
+
+                    <!-- 匯出按鈕區 (PNG 下載、SVG 下載、複製到剪貼簿) -->
+                    <div class="w-full space-y-2.5 pt-2">
+                        <button type="button" id="btn-download-png" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 text-sm cursor-pointer active:scale-[0.99]">
+                            <i class="fa-solid fa-download"></i> 下載高畫質 PNG
+                        </button>
+                        
+                        <div class="grid grid-cols-2 gap-2">
+                            <button type="button" id="btn-download-svg" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer">
+                                <i class="fa-solid fa-vector-square text-indigo-600"></i> 下載 SVG 向量圖
+                            </button>
+                            <button type="button" id="btn-copy-img" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium py-2.5 px-3 rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs cursor-pointer">
+                                <i class="fa-solid fa-copy text-indigo-600"></i> <span id="copy-text">複製圖片</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="toast-notify" class="hidden text-xs py-1.5 px-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5 w-full justify-center">
+                        <i class="fa-solid fa-check"></i> 圖片已複製至剪貼簿！
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 自訂提示視窗 (取代 alert/confirm) -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-xs">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 flex flex-col items-center text-center space-y-4">
+            <div id="modal-icon-container" class="w-12 h-12 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+                <i class="fa-solid fa-circle-info"></i>
+            </div>
+            <div class="space-y-1">
+                <h3 id="modal-title" class="text-base font-bold text-slate-800">下載向量 SVG 提示</h3>
+                <p id="modal-msg" class="text-xs text-slate-600 leading-relaxed">
+                    匯出的向量 SVG 檔為純向量 QR Code 碼點。為維持向量印刷最佳相容性，中央嵌入的點陣點已挖空，中間的圖片不會包含在 SVG 內。
+                </p>
+            </div>
+            <div class="flex gap-2 w-full pt-1">
+                <button type="button" id="modal-btn-cancel" class="flex-1 py-2 px-3 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">
+                    取消
+                </button>
+                <button type="button" id="modal-btn-confirm" class="flex-1 py-2 px-3 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-sm">
+                    繼續下載
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-slate-200 mt-8 py-5 text-center text-xs text-slate-500">
+        <p>ProQRCode 離線產生器 · 支援定位角保護、自訂邊框、Wi-Fi/名片與最高 2000px 匯出</p>
+    </footer>
+
+    <!-- JavaScript 核心邏輯 -->
+    <script>
+        // 狀態變數
+        let contentType = 'text'; // 'text', 'wifi', 'vcard'
+        let dotStyle = 'square'; // 'square', 'dots', 'rounded'
+        let finderStyle = 'square'; // 'square', 'rounded', 'circle'
+        let centerMode = 'none'; // 'none', 'logo'
+        let logoImageObj = null;
+
+        // DOM 元素快取
+        const inputText = document.getElementById('input-text');
+        const wifiSsid = document.getElementById('wifi-ssid');
+        const wifiPassword = document.getElementById('wifi-password');
+        const wifiType = document.getElementById('wifi-type');
+        const wifiHidden = document.getElementById('wifi-hidden');
+
+        const vcardFn = document.getElementById('vcard-fn');
+        const vcardTel = document.getElementById('vcard-tel');
+        const vcardEmail = document.getElementById('vcard-email');
+        const vcardOrg = document.getElementById('vcard-org');
+        const vcardTitle = document.getElementById('vcard-title');
+        const vcardUrl = document.getElementById('vcard-url');
+
+        const borderSizeRange = document.getElementById('border-size-range');
+        const borderSizeLabel = document.getElementById('border-size-label');
+        const borderCustomColor = document.getElementById('border-custom-color');
+        const borderColorPickerWrap = document.getElementById('border-color-picker-wrap');
+        const colorBorder = document.getElementById('color-border');
+        const colorBorderText = document.getElementById('color-border-text');
+
+        const colorDark = document.getElementById('color-dark');
+        const colorDarkText = document.getElementById('color-dark-text');
+        const colorLight = document.getElementById('color-light');
+        const colorLightText = document.getElementById('color-light-text');
+        const finderCustomColor = document.getElementById('finder-custom-color');
+        const finderColorPickerWrap = document.getElementById('finder-color-picker-wrap');
+        const colorFinder = document.getElementById('color-finder');
+        const colorFinderText = document.getElementById('color-finder-text');
+        const sizeRange = document.getElementById('size-range');
+        const sizeLabel = document.getElementById('size-label');
+
+        const logoInput = document.getElementById('logo-input');
+        const logoFileLabel = document.getElementById('logo-file-label');
+        const logoPreviewContainer = document.getElementById('logo-preview-container');
+        const logoPreviewImg = document.getElementById('logo-preview-img');
+        const removeLogoBtn = document.getElementById('remove-logo');
+        const logoSizeRange = document.getElementById('logo-size-range');
+        const logoSizeLabel = document.getElementById('logo-size-label');
+        const logoSizeWrapper = document.getElementById('logo-size-wrapper');
+        const maxLimitHint = document.getElementById('max-limit-hint');
+        const panelLogoUpload = document.getElementById('panel-logo-upload');
+
+        const modeNoneBtn = document.getElementById('mode-none-btn');
+        const modeLogoBtn = document.getElementById('mode-logo-btn');
+        const qrCanvas = document.getElementById('qrCanvas');
+        const qrcodeContainer = document.getElementById('qrcode-container');
+        const toastNotify = document.getElementById('toast-notify');
+
+        // 自訂 Modal 元素
+        const customModal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-msg');
+        const modalBtnCancel = document.getElementById('modal-btn-cancel');
+        const modalBtnConfirm = document.getElementById('modal-btn-confirm');
+        let onModalConfirmCallback = null;
+
+        function showModal(title, msg, onConfirm, showCancel = true) {
+            modalTitle.textContent = title;
+            modalMsg.textContent = msg;
+            onModalConfirmCallback = onConfirm;
+            modalBtnCancel.style.display = showCancel ? 'block' : 'none';
+            customModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            customModal.classList.add('hidden');
+            onModalConfirmCallback = null;
+        }
+
+        modalBtnCancel.addEventListener('click', closeModal);
+        modalBtnConfirm.addEventListener('click', () => {
+            if (onModalConfirmCallback) onModalConfirmCallback();
+            closeModal();
+        });
+
+        // 通用安全檔案下載
+        function triggerDownload(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            a.target = '_self';
+            document.body.appendChild(a);
+            
+            a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 300);
+        }
+
+        // 切換內容模式
+        function setContentType(type) {
+            contentType = type;
+            ['text', 'wifi', 'vcard'].forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const panel = document.getElementById(`tab-content-${t}`);
+                if (t === type) {
+                    btn.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm";
+                    panel.classList.remove('hidden');
+                } else {
+                    btn.className = "py-2 px-3 rounded-lg text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 text-slate-600 hover:text-slate-900";
+                    panel.classList.add('hidden');
+                }
+            });
+            generateQRCode();
+        }
+
+        // 取得目前組裝後的 QR Code 字串
+        function getCurrentPayload() {
+            if (contentType === 'text') {
+                return inputText.value.trim() || 'https://github.com';
+            } else if (contentType === 'wifi') {
+                const ssid = (wifiSsid.value || '').trim();
+                const pass = wifiPassword.value || '';
+                const type = wifiType.value;
+                const hidden = wifiHidden.checked ? 'H:true;' : '';
+                if (!ssid) return 'WIFI:S:MyWiFi;T:nopass;;';
+                return `WIFI:S:${ssid};T:${type};P:${pass};${hidden};`;
+            } else if (contentType === 'vcard') {
+                const fn = vcardFn.value.trim() || 'John Doe';
+                let vcard = `BEGIN:VCARD\nVERSION:3.0\nFN:${fn}\n`;
+                if (vcardTel.value.trim()) vcard += `TEL:${vcardTel.value.trim()}\n`;
+                if (vcardEmail.value.trim()) vcard += `EMAIL:${vcardEmail.value.trim()}\n`;
+                if (vcardOrg.value.trim()) vcard += `ORG:${vcardOrg.value.trim()}\n`;
+                if (vcardTitle.value.trim()) vcard += `TITLE:${vcardTitle.value.trim()}\n`;
+                if (vcardUrl.value.trim()) vcard += `URL:${vcardUrl.value.trim()}\n`;
+                vcard += `END:VCARD`;
+                return vcard;
+            }
+            return 'https://github.com';
+        }
+
+        // 智慧計算中央遮蓋比例安全上限
+        function updateDynamicLimit(payload) {
+            const length = payload.length;
+            let safeMax = 35 - Math.floor(length / 20);
+            if (safeMax < 16) safeMax = 16;
+            if (safeMax > 35) safeMax = 35;
+
+            logoSizeRange.max = safeMax;
+            if (parseInt(logoSizeRange.value) > safeMax) {
+                logoSizeRange.value = safeMax;
+            }
+            logoSizeLabel.textContent = `${logoSizeRange.value}%`;
+            maxLimitHint.textContent = `中央遮蓋比例 (智慧安全上限: ${safeMax}%)`;
+        }
+
+        function setDotStyle(style) {
+            dotStyle = style;
+            ['square', 'dots', 'rounded'].forEach(s => {
+                const btn = document.getElementById(`style-${s}`);
+                if (s === style) {
+                    btn.className = "p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all";
+                } else {
+                    btn.className = "p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all";
+                }
+            });
+            generateQRCode();
+        }
+
+        // 新增：切換定位角樣式
+        function setFinderStyle(style) {
+            finderStyle = style;
+            ['square', 'rounded', 'circle'].forEach(s => {
+                const btn = document.getElementById(`finder-${s}`);
+                if (s === style) {
+                    btn.className = "p-3 rounded-xl border-2 border-indigo-600 bg-indigo-50/50 text-indigo-900 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all";
+                } else {
+                    btn.className = "p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 bg-white text-slate-700 font-medium text-xs sm:text-sm flex flex-col items-center gap-2 transition-all";
+                }
+            });
+            generateQRCode();
+        }
+
+        function setCenterMode(mode) {
+            centerMode = mode;
+            if (mode === 'none') {
+                modeNoneBtn.className = "py-2.5 px-3 rounded-xl border border-indigo-600 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5";
+                modeLogoBtn.className = "py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 hover:bg-slate-50";
+                panelLogoUpload.classList.add('hidden');
+                logoSizeWrapper.classList.add('hidden');
+            } else {
+                modeLogoBtn.className = "py-2.5 px-3 rounded-xl border border-indigo-600 bg-indigo-50 text-indigo-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5";
+                modeNoneBtn.className = "py-2.5 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs sm:text-sm font-medium transition-all flex items-center justify-center gap-1.5 hover:bg-slate-50";
+                panelLogoUpload.classList.remove('hidden');
+                logoSizeWrapper.classList.remove('hidden');
+                if (logoImageObj) removeLogoBtn.classList.remove('hidden');
+            }
+            generateQRCode();
+        }
+
+        // 產生主函數
+        function generateQRCode() {
+            const payload = getCurrentPayload();
+            const targetTotalSize = parseInt(sizeRange.value);
+            sizeLabel.textContent = `${targetTotalSize} x ${targetTotalSize} px`;
+
+            updateDynamicLimit(payload);
+            qrcodeContainer.innerHTML = '';
+
+            try {
+                // 使用 H 級容錯 (可修復高達 30% 遮擋)
+                const tempDiv = document.createElement('div');
+                const qrcode = new QRCode(tempDiv, {
+                    text: payload,
+                    width: 256,
+                    height: 256,
+                    colorDark: colorDark.value,
+                    colorLight: colorLight.value,
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                setTimeout(() => {
+                    let matrix = null;
+                    if (qrcode._oQRCode && qrcode._oQRCode.modules) {
+                        matrix = qrcode._oQRCode.modules;
+                    }
+                    renderCanvas(matrix, targetTotalSize);
+                }, 40);
+
+            } catch (err) {
+                console.error("QR Code 產生失敗:", err);
+            }
+        }
+
+        // 精準渲染主畫布 (含自訂邊框、點陣樣式與 Logo 遮罩)
+        function renderCanvas(matrix, totalSize) {
+            qrCanvas.width = totalSize;
+            qrCanvas.height = totalSize;
+            const ctx = qrCanvas.getContext('2d');
+
+            const borderModules = parseInt(borderSizeRange.value);
+            const qrModulesCount = matrix ? matrix.length : 29;
+            const totalModulesCount = qrModulesCount + (borderModules * 2);
+            const moduleSize = totalSize / totalModulesCount;
+
+            // 1. 填色整個畫布背景
+            const actualBorderColor = (borderCustomColor.checked) ? colorBorder.value : colorLight.value;
+            ctx.fillStyle = actualBorderColor;
+            ctx.fillRect(0, 0, totalSize, totalSize);
+
+            // 2. 如果邊框有獨立色彩，在內部 QR 區域填滿背景色
+            if (borderCustomColor.checked && borderModules > 0) {
+                const qrAreaX = borderModules * moduleSize;
+                const qrAreaY = borderModules * moduleSize;
+                const qrAreaSize = qrModulesCount * moduleSize;
+                ctx.fillStyle = colorLight.value;
+                ctx.fillRect(qrAreaX, qrAreaY, qrAreaSize, qrAreaSize);
+            }
+
+            // 定位角偵測判定 (Finder Pattern 7x7 頂點區域)
+            function isFinderPattern(r, c) {
+                const n = qrModulesCount;
+                if (r < 7 && c < 7) return true; // 左上
+                if (r < 7 && c >= n - 7) return true; // 右上
+                if (r >= n - 7 && c < 7) return true; // 左下
+                return false;
+            }
+
+            const activeFinderColor = finderCustomColor.checked ? colorFinder.value : colorDark.value;
+
+            // 3. 繪製一般 QR 資料點陣 (若非經典方形定位角，定位角將由後續專屬函數繪製)
+            if (matrix) {
+                for (let r = 0; r < qrModulesCount; r++) {
+                    for (let c = 0; c < qrModulesCount; c++) {
+                        if (!matrix[r][c]) continue;
+
+                        const isFinder = isFinderPattern(r, c);
+                        // 若不是經典方形定位角，定位角由專屬自訂函數繪製
+                        if (isFinder && finderStyle !== 'square') continue;
+
+                        const x = (c + borderModules) * moduleSize;
+                        const y = (r + borderModules) * moduleSize;
+
+                        ctx.fillStyle = isFinder ? activeFinderColor : colorDark.value;
+
+                        if (isFinder || dotStyle === 'square') {
+                            ctx.fillRect(x, y, moduleSize + 0.6, moduleSize + 0.6);
+                        } else if (dotStyle === 'dots') {
+                            ctx.beginPath();
+                            ctx.arc(x + moduleSize / 2, y + moduleSize / 2, moduleSize * 0.44, 0, Math.PI * 2);
+                            ctx.fill();
+                        } else if (dotStyle === 'rounded') {
+                            ctx.beginPath();
+                            const pad = moduleSize * 0.08;
+                            const rad = moduleSize * 0.35;
+                            if (ctx.roundRect) {
+                                ctx.roundRect(x + pad, y + pad, moduleSize - pad * 2, moduleSize - pad * 2, rad);
+                            } else {
+                                ctx.rect(x + pad, y + pad, moduleSize - pad * 2, moduleSize - pad * 2);
+                            }
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // 3.1 繪製自訂風格的 3 個定位角 (圓角 / 圓形)
+            if (finderStyle !== 'square') {
+                const finderCoords = [
+                    { r: 0, c: 0 },
+                    { r: 0, c: qrModulesCount - 7 },
+                    { r: qrModulesCount - 7, c: 0 }
+                ];
+
+                finderCoords.forEach(pos => {
+                    const fx = (pos.c + borderModules) * moduleSize;
+                    const fy = (pos.r + borderModules) * moduleSize;
+                    const size7 = 7 * moduleSize;
+                    const size5 = 5 * moduleSize;
+                    const size3 = 3 * moduleSize;
+
+                    // 清空定位角 7x7 區塊為底色
+                    ctx.fillStyle = colorLight.value;
+                    ctx.fillRect(fx, fy, size7, size7);
+
+                    const drawShape = (x, y, sz, isRound, radVal) => {
+                        ctx.beginPath();
+                        if (isRound) {
+                            ctx.arc(x + sz / 2, y + sz / 2, sz / 2, 0, Math.PI * 2);
+                        } else {
+                            if (ctx.roundRect) {
+                                ctx.roundRect(x, y, sz, sz, radVal);
+                            } else {
+                                ctx.rect(x, y, sz, sz);
+                            }
+                        }
+                    };
+
+                    const isCircle = finderStyle === 'circle';
+                    const outerRadius = isCircle ? 0 : size7 * 0.28;
+                    const innerRadius = isCircle ? 0 : size5 * 0.24;
+                    const centerRadius = isCircle ? 0 : size3 * 0.20;
+
+                    // 外框 (7x7)
+                    ctx.fillStyle = activeFinderColor;
+                    drawShape(fx, fy, size7, isCircle, outerRadius);
+                    ctx.fill();
+
+                    // 中間間隔清空 (5x5)
+                    ctx.fillStyle = colorLight.value;
+                    drawShape(fx + moduleSize, fy + moduleSize, size5, isCircle, innerRadius);
+                    ctx.fill();
+
+                    // 中心核心點 (3x3)
+                    ctx.fillStyle = activeFinderColor;
+                    drawShape(fx + moduleSize * 2, fy + moduleSize * 2, size3, isCircle, centerRadius);
+                    ctx.fill();
+                });
+            }
+
+            // 4. 中央挖空與 Logo 嵌入
+            if (centerMode === 'logo' && logoImageObj) {
+                const percentage = parseInt(logoSizeRange.value) / 100;
+                const qrActualSize = qrModulesCount * moduleSize;
+                const centerSize = qrActualSize * percentage;
+
+                const qrStartX = borderModules * moduleSize;
+                const qrStartY = borderModules * moduleSize;
+                const x = qrStartX + (qrActualSize - centerSize) / 2;
+                const y = qrStartY + (qrActualSize - centerSize) / 2;
+
+                const padding = centerSize * 0.07;
+                const boxX = x - padding;
+                const boxY = y - padding;
+                const boxSize = centerSize + (padding * 2);
+                const radius = Math.max(6, boxSize * 0.12);
+
+                // 中央挖空清空
+                ctx.save();
+                ctx.beginPath();
+                ctx.fillStyle = colorLight.value;
+                if (ctx.roundRect) {
+                    ctx.roundRect(boxX, boxY, boxSize, boxSize, radius);
+                } else {
+                    ctx.rect(boxX, boxY, boxSize, boxSize);
+                }
+                ctx.fill();
+
+                // 邊框
+                ctx.lineWidth = Math.max(2, totalSize * 0.004);
+                ctx.strokeStyle = '#e2e8f0';
+                ctx.stroke();
+                ctx.restore();
+
+                // 繪製 Logo 圖片
+                ctx.save();
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(x, y, centerSize, centerSize, radius * 0.75);
+                } else {
+                    ctx.rect(x, y, centerSize, centerSize);
+                }
+                ctx.clip();
+                ctx.drawImage(logoImageObj, x, y, centerSize, centerSize);
+                ctx.restore();
+            }
+        }
+
+        // 執行 SVG 匯出並觸發下載
+        function executeSVGDownload() {
+            const payload = getCurrentPayload();
+            const targetTotalSize = parseInt(sizeRange.value);
+            const borderModules = parseInt(borderSizeRange.value);
+            
+            const tempDiv = document.createElement('div');
+            const qrcode = new QRCode(tempDiv, {
+                text: payload,
+                width: 256,
+                height: 256,
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            setTimeout(() => {
+                if (!qrcode._oQRCode || !qrcode._oQRCode.modules) return;
+                const matrix = qrcode._oQRCode.modules;
+                const qrModulesCount = matrix.length;
+                const totalModules = qrModulesCount + (borderModules * 2);
+                const cellSize = targetTotalSize / totalModules;
+
+                const bgColor = borderCustomColor.checked ? colorBorder.value : colorLight.value;
+                const fgColor = colorDark.value;
+                const finderColor = finderCustomColor.checked ? colorFinder.value : fgColor;
+
+                let skipRange = null;
+                if (centerMode === 'logo') {
+                    const percentage = parseInt(logoSizeRange.value) / 100;
+                    const centerModulesSpan = Math.ceil(qrModulesCount * percentage);
+                    const startM = Math.floor((qrModulesCount - centerModulesSpan) / 2);
+                    const endM = startM + centerModulesSpan;
+                    skipRange = { start: startM, end: endM };
+                }
+
+                let svg = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+                svg += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${targetTotalSize} ${targetTotalSize}" width="${targetTotalSize}" height="${targetTotalSize}">\n`;
+                svg += `  <rect width="100%" height="100%" fill="${bgColor}"/>\n`;
+
+                if (borderCustomColor.checked && borderModules > 0) {
+                    const qrX = borderModules * cellSize;
+                    const qrY = borderModules * cellSize;
+                    const qrW = qrModulesCount * cellSize;
+                    svg += `  <rect x="${qrX}" y="${qrY}" width="${qrW}" height="${qrW}" fill="${colorLight.value}"/>\n`;
+                }
+
+                function isFinderPattern(r, c) {
+                    const n = qrModulesCount;
+                    if (r < 7 && c < 7) return true;
+                    if (r < 7 && c >= n - 7) return true;
+                    if (r >= n - 7 && c < 7) return true;
+                    return false;
+                }
+
+                // 輸出常規數據點
+                for (let r = 0; r < qrModulesCount; r++) {
+                    for (let c = 0; c < qrModulesCount; c++) {
+                        if (!matrix[r][c]) continue;
+
+                        const isFinder = isFinderPattern(r, c);
+                        if (isFinder && finderStyle !== 'square') continue;
+
+                        if (!isFinder && skipRange) {
+                            if (r >= skipRange.start && r < skipRange.end && c >= skipRange.start && c < skipRange.end) {
+                                continue;
+                            }
+                        }
+
+                        const x = (c + borderModules) * cellSize;
+                        const y = (r + borderModules) * cellSize;
+                        const curColor = isFinder ? finderColor : fgColor;
+
+                        if (isFinder || dotStyle === 'square') {
+                            svg += `  <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${(cellSize + 0.3).toFixed(2)}" height="${(cellSize + 0.3).toFixed(2)}" fill="${curColor}"/>\n`;
+                        } else if (dotStyle === 'dots') {
+                            const cx = x + cellSize / 2;
+                            const cy = y + cellSize / 2;
+                            const rad = cellSize * 0.44;
+                            svg += `  <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${rad.toFixed(2)}" fill="${curColor}"/>\n`;
+                        } else if (dotStyle === 'rounded') {
+                            const pad = cellSize * 0.08;
+                            const rad = cellSize * 0.35;
+                            svg += `  <rect x="${(x + pad).toFixed(2)}" y="${(y + pad).toFixed(2)}" width="${(cellSize - pad * 2).toFixed(2)}" height="${(cellSize - pad * 2).toFixed(2)}" rx="${rad.toFixed(2)}" ry="${rad.toFixed(2)}" fill="${curColor}"/>\n`;
+                        }
+                    }
+                }
+
+                // 輸出非傳統方形的定位角 (圓角 / 圓形)
+                if (finderStyle !== 'square') {
+                    const finderCoords = [
+                        { r: 0, c: 0 },
+                        { r: 0, c: qrModulesCount - 7 },
+                        { r: qrModulesCount - 7, c: 0 }
+                    ];
+
+                    const isCircle = finderStyle === 'circle';
+
+                    finderCoords.forEach(pos => {
+                        const fx = (pos.c + borderModules) * cellSize;
+                        const fy = (pos.r + borderModules) * cellSize;
+                        const s7 = 7 * cellSize;
+                        const s5 = 5 * cellSize;
+                        const s3 = 3 * cellSize;
+
+                        // 清空背景
+                        svg += `  <rect x="${fx.toFixed(2)}" y="${fy.toFixed(2)}" width="${s7.toFixed(2)}" height="${s7.toFixed(2)}" fill="${colorLight.value}"/>\n`;
+
+                        if (isCircle) {
+                            const cx = fx + s7 / 2;
+                            const cy = fy + s7 / 2;
+                            svg += `  <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${(s7 / 2).toFixed(2)}" fill="${finderColor}"/>\n`;
+                            svg += `  <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${(s5 / 2).toFixed(2)}" fill="${colorLight.value}"/>\n`;
+                            svg += `  <circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${(s3 / 2).toFixed(2)}" fill="${finderColor}"/>\n`;
+                        } else {
+                            const r7 = s7 * 0.28;
+                            const r5 = s5 * 0.24;
+                            const r3 = s3 * 0.20;
+                            svg += `  <rect x="${fx.toFixed(2)}" y="${fy.toFixed(2)}" width="${s7.toFixed(2)}" height="${s7.toFixed(2)}" rx="${r7.toFixed(2)}" ry="${r7.toFixed(2)}" fill="${finderColor}"/>\n`;
+                            svg += `  <rect x="${(fx + cellSize).toFixed(2)}" y="${(fy + cellSize).toFixed(2)}" width="${s5.toFixed(2)}" height="${s5.toFixed(2)}" rx="${r5.toFixed(2)}" ry="${r5.toFixed(2)}" fill="${colorLight.value}"/>\n`;
+                            svg += `  <rect x="${(fx + cellSize * 2).toFixed(2)}" y="${(fy + cellSize * 2).toFixed(2)}" width="${s3.toFixed(2)}" height="${s3.toFixed(2)}" rx="${r3.toFixed(2)}" ry="${r3.toFixed(2)}" fill="${finderColor}"/>\n`;
+                        }
+                    });
+                }
+
+                svg += `</svg>`;
+
+                const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+                triggerDownload(blob, `qrcode-${targetTotalSize}px.svg`);
+            }, 60);
+        }
+
+        // 點擊下載 SVG
+        function handleDownloadSVG() {
+            if (centerMode === 'logo' && logoImageObj) {
+                showModal(
+                    "下載 SVG 提示",
+                    "向量 SVG 專為高解析印刷及工程使用，下載時中央圖像會被自動略過，保留最純淨的向量 QR Code 點陣。是否繼續下載？",
+                    executeSVGDownload
+                );
+            } else {
+                executeSVGDownload();
+            }
+        }
+
+        // 下載 PNG 邏輯
+        function handleDownloadPNG() {
+            const size = sizeRange.value;
+            const filename = `qrcode-${size}x${size}.png`;
+
+            if (qrCanvas.toBlob) {
+                qrCanvas.toBlob((blob) => {
+                    if (blob) {
+                        triggerDownload(blob, filename);
+                    } else {
+                        fallbackPNGDataUrl(filename);
+                    }
+                }, 'image/png', 1.0);
+            } else {
+                fallbackPNGDataUrl(filename);
+            }
+        }
+
+        function fallbackPNGDataUrl(filename) {
+            try {
+                const dataUrl = qrCanvas.toDataURL('image/png', 1.0);
+                const arr = dataUrl.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
+                }
+                const blob = new Blob([u8arr], { type: mime });
+                triggerDownload(blob, filename);
+            } catch (err) {
+                console.error("PNG 下載失敗:", err);
+            }
+        }
+
+        // 複製到剪貼簿
+        async function copyCanvasToClipboard() {
+            try {
+                qrCanvas.toBlob(async (blob) => {
+                    if (!blob) return;
+                    if (navigator.clipboard && window.ClipboardItem) {
+                        try {
+                            await navigator.clipboard.write([
+                                new ClipboardItem({ 'image/png': blob })
+                            ]);
+                            showToast();
+                            return;
+                        } catch (e) {
+                            console.warn("ClipboardItem 寫入受限，提供下載替代方案");
+                        }
+                    }
+                    document.getElementById('btn-download-png').click();
+                }, 'image/png');
+            } catch (err) {
+                console.error("複製失敗:", err);
+            }
+        }
+
+        function showToast() {
+            toastNotify.classList.remove('hidden');
+            setTimeout(() => {
+                toastNotify.classList.add('hidden');
+            }, 2500);
+        }
+
+        // 監聽事件綁定
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    logoImageObj = img;
+                    logoPreviewImg.src = event.target.result;
+                    logoPreviewContainer.classList.remove('hidden');
+                    logoFileLabel.textContent = file.name;
+                    removeLogoBtn.classList.remove('hidden');
+                    generateQRCode();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        removeLogoBtn.addEventListener('click', function() {
+            logoImageObj = null;
+            logoInput.value = '';
+            logoPreviewImg.src = '';
+            logoPreviewContainer.classList.add('hidden');
+            logoFileLabel.textContent = "點擊上傳 PNG / JPG 圖片";
+            removeLogoBtn.classList.add('hidden');
+            generateQRCode();
+        });
+
+        borderSizeRange.addEventListener('input', function(e) {
+            const val = e.target.value;
+            borderSizeLabel.textContent = val == 0 ? "0 格 (無邊框)" : `${val} 格 (${val == 4 ? "標準推薦" : "自訂"})`;
+            generateQRCode();
+        });
+
+        borderCustomColor.addEventListener('change', function(e) {
+            if (e.target.checked) {
+                borderColorPickerWrap.classList.remove('hidden');
+            } else {
+                borderColorPickerWrap.classList.add('hidden');
+            }
+            generateQRCode();
+        });
+
+        colorBorder.addEventListener('input', (e) => {
+            colorBorderText.value = e.target.value;
+            generateQRCode();
+        });
+        colorBorderText.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                colorBorder.value = e.target.value;
+                generateQRCode();
+            }
+        });
+
+        logoSizeRange.addEventListener('input', function(e) {
+            logoSizeLabel.textContent = `${e.target.value}%`;
+            generateQRCode();
+        });
+
+        colorDark.addEventListener('input', (e) => {
+            colorDarkText.value = e.target.value;
+            generateQRCode();
+        });
+        colorDarkText.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                colorDark.value = e.target.value;
+                generateQRCode();
+            }
+        });
+
+        colorLight.addEventListener('input', (e) => {
+            colorLightText.value = e.target.value;
+            generateQRCode();
+        });
+        colorLightText.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                colorLight.value = e.target.value;
+                generateQRCode();
+            }
+        });
+
+        // 新增：定位角色彩監聽
+        finderCustomColor.addEventListener('change', function(e) {
+            if (e.target.checked) {
+                finderColorPickerWrap.classList.remove('hidden');
+            } else {
+                finderColorPickerWrap.classList.add('hidden');
+            }
+            generateQRCode();
+        });
+
+        colorFinder.addEventListener('input', (e) => {
+            colorFinderText.value = e.target.value;
+            generateQRCode();
+        });
+        colorFinderText.addEventListener('input', (e) => {
+            if (/^#[0-9A-F]{6}$/i.test(e.target.value)) {
+                colorFinder.value = e.target.value;
+                generateQRCode();
+            }
+        });
+
+        [inputText, wifiSsid, wifiPassword, wifiType, wifiHidden, vcardFn, vcardTel, vcardEmail, vcardOrg, vcardTitle, vcardUrl].forEach(el => {
+            if (el) {
+                el.addEventListener('input', generateQRCode);
+                el.addEventListener('change', generateQRCode);
+            }
+        });
+
+        sizeRange.addEventListener('input', generateQRCode);
+
+        document.getElementById('btn-download-png').addEventListener('click', handleDownloadPNG);
+        document.getElementById('btn-download-svg').addEventListener('click', handleDownloadSVG);
+        document.getElementById('btn-copy-img').addEventListener('click', copyCanvasToClipboard);
+
+        document.getElementById('btn-save-html').addEventListener('click', function() {
+            try {
+                const docType = "<!DOCTYPE html>\n";
+                const fullHtml = docType + document.documentElement.outerHTML;
+                const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+                triggerDownload(blob, 'qrcode-generator-offline.htm');
+            } catch (err) {
+                console.error("儲存 HTML 失敗:", err);
+            }
+        });
+
+        // 初始化
+        window.onload = function() {
+            generateQRCode();
+        };
+    </script>
+</body>
+</html>
